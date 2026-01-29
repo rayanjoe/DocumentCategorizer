@@ -15,6 +15,8 @@ Categorize the document into EXACTLY ONE of the following options:
 - LOAN APPLICATION
 - TAX RETURN
 - APPRAISAL FORM
+- LOAN PURCHASE STATEMENT
+
 
 Rules:
 - Read the added text properly and answer don't hallucinate. If the proof are there, then respons
@@ -52,6 +54,7 @@ Categorize the document into EXACTLY ONE of the following options:
 - LOAN APPLICATION
 - TAX RETURN
 - APPRAISAL FORM
+- LOAN PURCHASE STATEMENT
 
 Rules:
 - Read the added text properly and answer don't hallucinate. If the proof are there, then respons

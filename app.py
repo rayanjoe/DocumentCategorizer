@@ -15,7 +15,7 @@ FREDDIE_MAC_LOGO = "freddie-mac.png"
 HEXACORP_LOGO = "hexacorplogo.png"
 hexacorp_logo_diff = "logo-blue.png"
 
-ORDER = ["PAY STUB", "MORTGAGE DEED", "W2 FORM", "INSURANCE POLICY", "CREDIT REPORT", "LOAN APPLICATION", "TAX RETURN", "APPRAISAL FORM"]
+ORDER = ["PAY STUB", "MORTGAGE DEED", "W2 FORM", "INSURANCE POLICY", "CREDIT REPORT", "LOAN APPLICATION", "TAX RETURN", "APPRAISAL FORM", "LOAN PURCHASE STATEMENT"]
 
 IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff"]
 PDF_EXTS = [".pdf"]
@@ -24,7 +24,7 @@ PDF_EXTS = [".pdf"]
 
 def init_buckets():
     buckets = {c: [] for c in ORDER}
-    buckets["NEED TO VERIFY"] = []
+    buckets["UNKNOWN"] = []
     return buckets
 
 
@@ -64,7 +64,7 @@ def classify_file(adapter: BaseAIAdapter, file_name: str, file_bytes: bytes) -> 
             safe_remove(temp_path)
 
     else:
-        return "NEED TO VERIFY"
+        return "UNKNOWN"
     
     print(prompt)
     response = adapter.execute(prompt=prompt)
@@ -115,23 +115,23 @@ def category_title_page_pdf(category: str) -> bytes:
     if os.path.exists(FREDDIE_MAC_LOGO):
         c.drawImage(
             ImageReader(FREDDIE_MAC_LOGO),
-            x=0.75 * inch,
+            x=0.85 * inch,
             y=logo_y,
             height=logo_height,
             preserveAspectRatio=True,
             mask="auto",
         )
 
-    if os.path.exists(hexacorp_logo_diff):
+    if os.path.exists(HEXACORP_LOGO):
         c.drawImage(
-            ImageReader(hexacorp_logo_diff),
+            ImageReader(HEXACORP_LOGO),
             x=w - 2.25 * inch,     # right aligned
             y=logo_y,
             height=logo_height,
             preserveAspectRatio=True,
             mask="auto",
         )
-    c.setFont("Helvetica-Bold", 56)
+    c.setFont("Helvetica-Bold", 40)
     c.drawCentredString(w / 2, h / 2, category)
 
     # Subtitle
@@ -146,7 +146,7 @@ def category_title_page_pdf(category: str) -> bytes:
 def build_sorted_bundle_pdf(buckets: dict) -> bytes:
     writer = PdfWriter()
 
-    for cat in ORDER + ["NEED TO VERIFY"]:
+    for cat in ORDER + ["UNKNOWN"]:
         items = buckets.get(cat, [])
         if not items:
             continue
@@ -199,7 +199,7 @@ def process_uploads(uploaded_files) -> tuple[dict, bytes]:
             buckets[category].append({"file_name": file_name, "file_bytes": file_bytes})
             #print(buckets)
         else:
-            buckets["NEED TO VERIFY"].append({"file_name": file_name, "file_bytes": file_bytes})
+            buckets["UNKNOWN"].append({"file_name": file_name, "file_bytes": file_bytes})
 
     pdf_bytes = build_sorted_bundle_pdf(buckets)
     
@@ -229,7 +229,7 @@ def process_uploads(uploaded_files) -> tuple[dict, bytes]:
 #             buckets, pdf_bytes = process_uploads(uploaded_files)
 
 #         st.subheader("Buckets (classified results)")
-#         for cat in ORDER + ["NEED TO VERIFY"]:
+#         for cat in ORDER + ["UNKNOWN"]:
 #             files_in_cat = [x["file_name"] for x in buckets[cat]]
 #             st.write(f"**{cat}**: {len(files_in_cat)}")
 #             if files_in_cat:
@@ -360,10 +360,46 @@ st.markdown(
         background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8;
         font-weight:800; font-size:0.85rem; margin-right:6px; margin-bottom:6px;
       }
+        /* Pill-style blue process button (reliable selector) */
+        .process-btn div[data-testid="stButton"] > button {
+        display: inline-block !important;
+        padding: 6px 14px !important;
+        border-radius: 999px !important;
+        background: #eff6ff !important;
+        border: 1px solid #bfdbfe !important;
+        color: #1d4ed8 !important;
+        font-weight: 800 !important;
+        font-size: 0.85rem !important;
+        width: auto !important;
+        }
+
+        .process-btn div[data-testid="stButton"] > button:hover {
+        background: #dbeafe !important;
+        border-color: #93c5fd !important;
+        }
+
+
     </style>
     """,
     unsafe_allow_html=True
 )
+st.markdown("""
+<style>
+
+/* Process = Blue */
+.process-wrapper div.stButton > button {
+  background-color: #2563eb !important;
+  color: white !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+}
+.process-wrapper div.stButton > button:hover {
+  background-color: #1d4ed8 !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 # -----------------------------
 # Session state
@@ -374,6 +410,8 @@ st.session_state.setdefault("processed_bytes", None)   # pdf bytes
 st.session_state.setdefault("buckets", None)          # backend buckets dict
 st.session_state.setdefault("last_upload_signature", None)
 st.session_state.setdefault("uploader_key", 0)
+if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = 0
 
 
 # -----------------------------
@@ -403,19 +441,21 @@ with main_center:
         st.markdown("## 📄 Document Processing")
     
     with col2:
-                if st.button("Clear", type="primary"):
-                    st.session_state.uploader_key += 1  # ✅ clears uploader UI
-                    st.session_state.processing = False
-                    st.session_state.processed = False
-                    st.session_state.processed_bytes = None
-                    st.session_state.buckets = None
-                    st.session_state.last_upload_signature = None
-                    st.rerun()
+
+        if st.button("🗑️ Clear", type='primary'):
+            st.session_state.uploader_key += 1
+            st.session_state.processing = False
+            st.session_state.processed = False
+            st.session_state.processed_bytes = None
+            st.session_state.buckets = None
+            st.session_state.last_upload_signature = None
+            st.rerun()
+
 
     uploaded_files = st.file_uploader(
         "Upload documents (PDF, DOC, DOCX, max 10MB each)",
         type=["pdf", "doc", "docx", "png", "jpg", "jpeg", "webp", "tif", "tiff", "pdf"],
-        key="uploader",
+        key=f"uploader_{st.session_state.uploader_key}",
         accept_multiple_files=True
     )
 
@@ -462,7 +502,7 @@ with main_center:
         # ---------- PROCESSED ----------
         elif st.session_state.processed:
             st.download_button(
-                label="⬇️ Download Processed Documents",
+                label="Download Processed Documents",
                 data=st.session_state.processed_bytes,   # your backend bytes
                 file_name="sorted_bundle.pdf",
                 mime="application/pdf",
@@ -474,7 +514,7 @@ with main_center:
                 <div style="margin-top:12px; background:#ecfdf5; border:1px solid #bbf7d0;
                             padding:12px; border-radius:14px; text-align:center; color:#166534;
                             font-weight:800;">
-                    ✓ sorted_bundle.pdf generated successfully!
+                    Document generated successfully!
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -482,14 +522,14 @@ with main_center:
 
         # ---------- READY ----------
         else:
-            col1, col2 = st.columns(2)
 
-            
-            st.markdown("<div class='process-btn'>", unsafe_allow_html=True)
-            if st.button("Process Document"):
-                    st.session_state.processing = True
-                    st.rerun()
+            st.markdown("<div class='process-wrapper'>", unsafe_allow_html=True)
+            if st.button("Process Document", type = 'secondary', width= 'stretch'):
+                st.session_state.processing = True
+                
+                st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
+
 
             
 # -----------------------------
@@ -497,26 +537,28 @@ with main_center:
 # -----------------------------
 with main_right:
     st.markdown(
-        """
+        f"""
         <div class="sidecard">
           <h3 style="margin:0 0 8px 0;">📌 Instructions</h3>
           <div class="muted">
             <b>1)</b> Upload one or more documents.<br/>
-            <b>2)</b> Click <span class="pill">Process Document</span> (blue).<br/>
-            <b>3)</b> The backend runs <b>process_uploads(uploaded_files)</b> and returns:<br/>
-            &nbsp;&nbsp;• <b>buckets</b>: classified file list per category<br/>
-            &nbsp;&nbsp;• <b>pdf_bytes</b>: final <u>single</u> sorted bundle PDF<br/>
-            <b>4)</b> Click the green download button to download <b>sorted_bundle.pdf</b>.
+            <b>2)</b> Click >Process Document .<br/>
+            <b>3)</b> The application processes the uploaded documents and classifies each file.<br/>
+            <b>4)</b> Click the green download button to download the <b>sorted PDF</b>.
           </div>
+
           <hr style="border:none; border-top:1px solid #e5e7eb; margin:12px 0;" />
-          <h3 style="margin:0 0 8px 0;">⚙️ Config Order</h3>
+
+          <h3 style="margin:0 0 8px 0;">📑 Document Ordering</h3>
+
+          <ol style="margin:0; padding-left:18px; font-weight:700;">
+            {"".join([f"<li style='margin-bottom:6px;'>{c}</li>" for c in ORDER])}
+            <li>NEED TO VERIFY</li>
+          </ol>
         </div>
         """,
         unsafe_allow_html=True
     )
-    for c in ORDER:
-        st.markdown(f"<span class='pill'>{c}</span>", unsafe_allow_html=True)
-    st.markdown("<span class='pill'>NEED TO VERIFY</span>", unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("### 📂 Uploaded Files")
@@ -525,7 +567,6 @@ with main_right:
             st.write(f"• {f.name}")
     else:
         st.caption("No files uploaded yet.")
-
 
 # -----------------------------
 # Footer
