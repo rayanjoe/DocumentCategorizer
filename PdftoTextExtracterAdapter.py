@@ -50,7 +50,6 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 def extract_text_from_pdf_fast(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         first_page = pdf.pages[0]
-        #print("TOTAL extracted len:", len(first_page))
 
         text = first_page.extract_text()
         if text and text.strip():

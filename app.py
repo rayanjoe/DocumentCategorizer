@@ -20,8 +20,6 @@ ORDER = ["PAY STUB", "MORTGAGE DEED", "W2 FORM", "INSURANCE POLICY", "CREDIT REP
 IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff"]
 PDF_EXTS = [".pdf"]
 
-
-
 def init_buckets():
     buckets = {c: [] for c in ORDER}
     buckets["UNKNOWN"] = []
@@ -414,9 +412,6 @@ if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0
 
 
-# -----------------------------
-# Header
-# -----------------------------
 st.markdown('<div class="top-header">', unsafe_allow_html=True)
 left, center, right = st.columns([1.6, 3.2, 1.6], vertical_alignment="center")
 with left:
@@ -427,14 +422,9 @@ with right:
     st.image(HEXACORP_LOGO, width="stretch")
 st.markdown("</div>", unsafe_allow_html=True)
 
-# -----------------------------
-# Main layout
-# -----------------------------
 main_left, main_center, main_right = st.columns([1.2, 2.2, 1.2])
 
-# -----------------------------
-# CENTER PANEL
-# -----------------------------
+
 with main_center:
     col1, col2 = st.columns([4,1])
     with col1:
